@@ -23,3 +23,7 @@ export { loadConfig, initConfig } from './config.js';
 // Scheduled job runner
 export { run as runJob } from './job.js';
 export { default as job } from './job.js';
+
+// Free mode components
+export { FreeModePipeline } from './free-mode/pipeline.js';
+

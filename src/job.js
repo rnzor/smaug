@@ -18,6 +18,7 @@ import path from 'path';
 import os from 'os';
 import { fetchAndPrepareBookmarks } from './processor.js';
 import { loadConfig } from './config.js';
+import { FreeModePipeline } from './free-mode/pipeline.js';
 
 const JOB_NAME = 'smaug';
 const LOCK_FILE = path.join(os.tmpdir(), 'smaug.lock');
@@ -678,10 +679,22 @@ export async function run(options = {}) {
     return { success: true, skipped: true };
   }
 
+  let bookmarkCount = 0;
+
+  // Route to free mode or agent mode
+  if (config.mode === 'free') {
+    console.log(`[${now}] Running in FREE MODE (deterministic pipeline)`);
+    console.log(`[${now}] Reasoning provider: ${config.reasoningProvider || 'gemini'}`);
+    const result = await runFreeMode(config, bookmarkCount, options);
+    releaseLock();
+    return result;
+  }
+
+  console.log(`[${now}] Running in AGENT MODE (Claude Code)`);
+
   try {
     // Check for existing pending bookmarks first
     let pendingData = null;
-    let bookmarkCount = 0;
 
     if (fs.existsSync(config.pendingFile)) {
       try {
@@ -863,3 +876,71 @@ if (process.argv[1] && process.argv[1].endsWith('job.js')) {
     process.exit(result.success ? 0 : 1);
   });
 }
+
+// ============================================================================
+// Free Mode Runner
+// ============================================================================
+
+async function runFreeMode(config, bookmarkCount, options = {}) {
+  const startTime = Date.now();
+  const now = new Date().toISOString();
+
+  try {
+    // Phase 1: Fetch bookmarks
+    console.log(`[${now}] Phase 1: Fetching and preparing bookmarks...`);
+    const prepResult = await fetchAndPrepareBookmarks(options);
+
+    if (prepResult.count === 0) {
+      console.log(`[${now}] No bookmarks to process`);
+      return { success: true, count: 0, duration: Date.now() - startTime };
+    }
+
+    // Phase 2: Process with free mode pipeline
+    console.log(`[${now}] Phase 2: Processing with deterministic pipeline...`);
+
+    const pipeline = new FreeModePipeline(config, config.categories);
+    const result = await pipeline.process(prepResult.bookmarks);
+
+    // Phase 3: Clean up pending file
+    console.log(`[${now}] Cleaning up pending file...`);
+    const pendingData = JSON.parse(fs.readFileSync(config.pendingFile, 'utf8'));
+    const processedIds = new Set(result.results.map(r => r.id));
+    const remaining = pendingData.bookmarks.filter(b => !processedIds.has(b.id));
+
+    fs.writeFileSync(config.pendingFile, JSON.stringify({
+      generatedAt: pendingData.generatedAt,
+      count: remaining.length,
+      bookmarks: remaining
+    }, null, 2));
+
+    const duration = Date.now() - startTime;
+
+    console.log(`
+
+  🐉 FREE MODE COMPLETE
+
+  ✅ Processed: ${result.processed}/${result.total} bookmarks
+  ⏱️  Duration: ${Math.round(duration / 1000)}s
+
+  Mode: Free (deterministic JS pipeline)
+  Reasoner: ${config.reasoningProvider || 'gemini'}
+
+`);
+
+    return {
+      success: true,
+      count: result.processed,
+      total: result.total,
+      duration
+    };
+
+  } catch (error) {
+    console.error(`[${now}] Free mode error:`, error.message);
+    return {
+      success: false,
+      error: error.message,
+      duration: Date.now() - startTime
+    };
+  }
+}
+

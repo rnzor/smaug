@@ -342,11 +342,11 @@ async function main() {
     case '-h':
     default:
       console.log(`
-🐉 Smaug - Twitter Bookmarks & Likes Archiver
+ 🐉 Smaug - Twitter Bookmarks & Likes Archiver
 
 Commands:
   setup          Interactive setup wizard (start here!)
-  run            Run the full job (fetch + process with Claude)
+  run            Run full job (fetch + process with Claude)
   run -t         Run with token usage tracking (--track-tokens)
   run --limit N  Process only N bookmarks (for large backlogs)
   fetch [n]      Fetch n tweets (default: 20)
@@ -360,7 +360,7 @@ Commands:
 
 Examples:
   smaug setup                    # First-time setup
-  smaug run                      # Run full automation
+  smaug run                      # Run in Agent Mode (Claude Code)
   smaug run --limit 50           # Process 50 bookmarks at a time
   smaug fetch                    # Fetch latest (uses config source)
   smaug fetch 50                 # Fetch 50 tweets
@@ -371,10 +371,18 @@ Examples:
   smaug fetch --media            # Include photos/videos/GIFs (experimental)
   smaug fetch --force            # Re-process archived tweets
 
+Environment Variables:
+  SMAUG_MODE=free               Run in Free Mode (default: agent)
+  SMAUG_REASONER=openrouter     Use OpenRouter API (Free Mode)
+  OPENROUTER_API_KEY=key        OpenRouter API key
+  OUTPUT_DIR=./my-bookmarks     Output directory for Free Mode
+
 Config (smaug.config.json):
-  "source": "bookmarks"    Default source (bookmarks, likes, or both)
-  "includeMedia": false    EXPERIMENTAL: Include media (default: off)
-  "folders": {}            Map folder IDs to tags (see README)
+  "mode": "agent"             Execution mode: agent or free
+  "source": "bookmarks"         Default source (bookmarks, likes, or both)
+  "includeMedia": false         EXPERIMENTAL: Include media (default: off)
+  "folders": {}                 Map folder IDs to tags (see README)
+  "reasoningProvider": "openrouter" Free Mode reasoner: openrouter
 
 More info: https://github.com/alexknowshtml/smaug
 `);

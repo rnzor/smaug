@@ -15,6 +15,15 @@ const DEFAULT_CONFIG = {
   // Source to fetch from: 'bookmarks', 'likes', or 'both'
   source: 'bookmarks',
 
+  // Execution mode: 'agent' (Claude Code) or 'free' (deterministic JS + reasoning)
+  mode: 'agent',
+
+  // Reasoning provider for free mode: 'openrouter' only
+  reasoningProvider: 'openrouter',
+
+  // Output directory for free mode (default: ./bookmarks)
+  outputDir: './bookmarks',
+
   // EXPERIMENTAL: Include media attachments (photos, videos, GIFs)
   // Off by default - enable with --media flag or config
   includeMedia: false,
@@ -104,6 +113,13 @@ const DEFAULT_CONFIG = {
   // Tools to use for different content types
   // allowedTools: the Claude Code tools the processor can use
   allowedTools: 'Read,Write,Edit,Glob,Grep,Bash,Task,TodoWrite',
+
+  // OpenRouter configuration (optional for free mode)
+  openrouter: {
+    apiKey: null,
+    model: 'anthropic/claude-3.5-sonnet',
+    baseUrl: 'https://openrouter.ai/api/v1'
+  },
 
   // ---- Automation settings (for scheduled jobs) ----
 
@@ -237,6 +253,21 @@ export function loadConfig(configPath) {
   if (process.env.WEBHOOK_TYPE) {
     config.webhookType = process.env.WEBHOOK_TYPE;
   }
+  if (process.env.SMAUG_MODE) {
+    config.mode = process.env.SMAUG_MODE;
+  }
+  if (process.env.SMAUG_REASONER) {
+    config.reasoningProvider = process.env.SMAUG_REASONER;
+  }
+  if (process.env.OPENROUTER_API_KEY) {
+    config.openrouter.apiKey = process.env.OPENROUTER_API_KEY;
+  }
+  if (process.env.OPENROUTER_MODEL) {
+    config.openrouter.model = process.env.OPENROUTER_MODEL;
+  }
+  if (process.env.OUTPUT_DIR) {
+    config.outputDir = process.env.OUTPUT_DIR;
+  }
 
   // Expand ~ in all path-related config values
   config.archiveFile = expandTilde(config.archiveFile);
@@ -244,6 +275,7 @@ export function loadConfig(configPath) {
   config.stateFile = expandTilde(config.stateFile);
   config.birdPath = expandTilde(config.birdPath);
   config.projectRoot = expandTilde(config.projectRoot);
+  config.outputDir = expandTilde(config.outputDir);
 
   // Expand ~ in category folders
   if (config.categories) {
@@ -264,6 +296,8 @@ export function initConfig(targetPath = './smaug.config.json') {
   const exampleConfig = {
     // Source: 'bookmarks' (default), 'likes', or 'both'
     source: 'bookmarks',
+    // Mode: 'agent' (Claude Code) or 'free' (deterministic JS + reasoning)
+    mode: 'agent',
     // EXPERIMENTAL: Include media attachments (photos, videos, GIFs)
     // includeMedia: false,
     archiveFile: './bookmarks.md',
@@ -303,6 +337,14 @@ export function initConfig(targetPath = './smaug.config.json') {
     autoInvokeClaude: true,
     claudeModel: 'sonnet',
     claudeTimeout: 900000,
+
+    // Free mode configuration
+    reasoningProvider: 'gemini',
+    outputDir: './bookmarks',
+    openrouter: {
+      apiKey: 'YOUR_OPENROUTER_API_KEY_HERE',
+      model: 'anthropic/claude-3.5-sonnet'
+    },
 
     // Notifications (optional)
     webhookUrl: null,
